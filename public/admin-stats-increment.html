@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Admin Panel - Incremento Manual de Estadísticas</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .form-container {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 1.1em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            background: white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+
+        .result.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+        }
+
+        .result.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .quick-btn {
+            padding: 10px;
+            background: #f3f4f6;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .quick-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
+        .info-box {
+            background: #eff6ff;
+            border: 2px solid #3b82f6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-box h3 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #1e3a8a;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Admin Panel</h1>
+            <p>Incremento Manual de Estadísticas RDOMI</p>
+        </div>
+
+        <div class="form-container">
+            <div class="info-box">
+                <h3>🔑 Instrucciones</h3>
+                <p>Selecciona cualquier estación y la cantidad que quieres incrementar. Los cambios se verán en tiempo real en todas las pantallas conectadas.</p>
+            </div>
+
+            <form id="incrementForm">
+                <div class="form-group">
+                    <label for="serviceId">🎵 ID de la Estación</label>
+                    <input type="number" id="serviceId" name="serviceId" required min="1" 
+                           placeholder="Ej: 123 (ID de la estación que quieres incrementar)">
+                </div>
+
+                <div class="form-group">
+                    <label for="incrementAmount">📈 Cantidad a Incrementar</label>
+                    <input type="number" id="incrementAmount" name="incrementAmount" required min="1" max="1000" value="1"
+                           placeholder="Ej: 5 (cantidad que se sumará al contador)">
+                    
+                    <div class="quick-buttons">
+                        <div class="quick-btn" onclick="setIncrement(1)">+1</div>
+                        <div class="quick-btn" onclick="setIncrement(5)">+5</div>
+                        <div class="quick-btn" onclick="setIncrement(10)">+10</div>
+                        <div class="quick-btn" onclick="setIncrement(25)">+25</div>
+                        <div class="quick-btn" onclick="setIncrement(50)">+50</div>
+                        <div class="quick-btn" onclick="setIncrement(100)">+100</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="adminKey">🔐 Clave de Administrador</label>
+                    <input type="password" id="adminKey" name="adminKey" required 
+                           placeholder="Ingresa tu clave de administrador">
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 Incrementar Estadísticas
+                </button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Procesando incremento...</p>
+            </div>
+
+            <div class="result" id="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de la API
+        const API_BASE = window.location.origin + '/api';
+        
+        function setIncrement(amount) {
+            document.getElementById('incrementAmount').value = amount;
+        }
+
+        document.getElementById('incrementForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const serviceId = document.getElementById('serviceId').value;
+            const incrementAmount = document.getElementById('incrementAmount').value;
+            const adminKey = document.getElementById('adminKey').value;
+            
+            if (!serviceId || !incrementAmount || !adminKey) {
+                showResult('Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            // Mostrar loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/rdomi/sts/admin/manual-increment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        service_id: parseInt(serviceId),
+                        increment_amount: parseInt(incrementAmount),
+                        admin_key: adminKey
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.code === 200) {
+                    showResult(`✅ ¡Éxito! 
+                        <br>• Estación ${data.service_id} incrementada en +${data.increment_applied}
+                        <br>• Nuevo total: ${data.new_total.toLocaleString()}
+                        <br>• Cambios enviados en tiempo real
+                        <br>• Hora: ${new Date(data.timestamp).toLocaleString()}`, 'success');
+                } else {
+                    showResult(`❌ Error: ${data.message || 'Error desconocido'}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`❌ Error de conexión: ${error.message}`, 'error');
+            } finally {
+                // Ocultar loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        function showResult(message, type) {
+            const result = document.getElementById('result');
+            result.innerHTML = message;
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+            
+            // Auto-ocultar después de 10 segundos si es éxito
+            if (type === 'success') {
+                setTimeout(() => {
+                    result.style.display = 'none';
+                }, 10000);
+            }
+        }
+
+        // Auto-focus en el primer campo
+        document.getElementById('serviceId').focus();
+    </script>
+</body>
+</html>
