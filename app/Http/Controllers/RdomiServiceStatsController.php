@@ -62,9 +62,27 @@ class RdomiServiceStatsController extends Controller
             // Guardar timestamp en cache por 9 minutos (540 segundos)
             Cache::put($rateLimitKey, now()->timestamp, 540);
 
+            // ENVIAR ACTUALIZACIÓN AL WEBSOCKET - MODIFICADO AHORA
+            try {
+                $currentCount = $stats->fresh()->count; // Obtener el count actualizado
+                \Log::info("Enviando al WebSocket: service_id={$serviceId}, count={$currentCount}");
+                
+                $response = \Illuminate\Support\Facades\Http::post('https://rx.netdomi.com/api/websocket-ping', [
+                    'service_id' => $serviceId,
+                    'current_count' => $currentCount,
+                    'type' => 'view_increment'
+                ]);
+                
+                \Log::info("Respuesta WebSocket: " . $response->body());
+            } catch (\Exception $e) {
+                // Log error pero no interrumpir la respuesta
+                \Log::error('Error notificando al servidor Socket.IO: ' . $e->getMessage());
+            }
+
             return response()->json([
                 'message' => 'Request processed successfully',
                 'service_id' => $serviceId,
+                'current_count' => $stats->fresh()->count, // AGREGADO - Incluir el count actual
                 'code' => 200
             ]);
 

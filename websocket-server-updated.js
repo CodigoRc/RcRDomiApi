@@ -31,20 +31,23 @@ app.use((req, res, next) => {
 
 // Endpoint HTTP para recibir actualizaciones desde Laravel
 app.post('/api/ping', (req, res) => {
-  const { total, service_id, data, manual_increment } = req.body;
+  const { total, service_id, data, manual_increment, current_count, type } = req.body;
   
   console.log('📡 Datos recibidos de Laravel:', {
     total,
+    current_count,
     service_id,
     manual_increment,
+    type,
     data,
     timestamp: new Date().toISOString()
   });
 
   // Preparar datos en el formato que espera el frontend
+  const finalCount = current_count || total || 0; // Prioridad: current_count > total > 0
   const updateData = {
     service_id: parseInt(service_id),
-    current_count: parseInt(total),
+    current_count: parseInt(finalCount),
     timestamp: new Date().toISOString()
   };
 
