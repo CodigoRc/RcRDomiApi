@@ -10,6 +10,7 @@ Este paquete contiene SOLO los archivos necesarios para actualizar el sistema de
 - `app/Models/ServiceStats.php` - Modelo de estadísticas
 - `routes/api.php` - Rutas del API (solo las nuevas de estadísticas)
 - `database_stats_tables.sql` - Script SQL para crear tablas de estadísticas
+- `realtime-counter.html` - Página de monitoreo en tiempo real
 
 ### 📊 Base de Datos
 - `database_stats_tables.sql` - Estructura completa de tablas de estadísticas
@@ -33,6 +34,7 @@ Subir los archivos en este orden:
 2. `app/Models/ServiceStats.php`
 3. `routes/api.php`
 4. `database_stats_tables.sql` (ejecutar en MySQL)
+5. `realtime-counter.html` (copiar a carpeta public/)
 
 ### 3. EJECUTAR SQL
 ```sql

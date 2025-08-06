@@ -23,6 +23,7 @@
   - [ ] `app/Models/ServiceStats.php`
   - [ ] `routes/api.php`
   - [ ] `database_stats_tables.sql`
+  - [ ] `realtime-counter.html` (copiar a `public/`)
 
 - [ ] **Ejecutar SQL**
   - [ ] Conectar a MySQL/MariaDB
@@ -57,6 +58,12 @@
   - [ ] Rutas originales siguen funcionando
   - [ ] No hay errores en logs
   - [ ] Performance normal
+
+- [ ] **Verificar página de monitoreo**
+  - [ ] `realtime-counter.html` accesible vía web
+  - [ ] WebSocket conecta correctamente
+  - [ ] Contadores se actualizan en tiempo real
+  - [ ] Botones de prueba funcionan
 
 ## 🆘 EN CASO DE PROBLEMAS
 

@@ -29,6 +29,12 @@ Subir solo los archivos necesarios para el sistema de estadísticas en tiempo re
 └── database_stats_tables.sql
 ```
 
+### 5. **Página de Monitoreo**
+```
+📂 public/
+└── realtime-counter.html
+```
+
 ## 🚀 PASOS DE DEPLOY
 
 ### **PASO 1: RESPALDO (OBLIGATORIO)**
@@ -48,6 +54,7 @@ cp app/Models/ServiceStats.php app/Models/ServiceStats.php.backup
 2. `app/Models/ServiceStats.php`
 3. `routes/api.php`
 4. `database_stats_tables.sql`
+5. `realtime-counter.html` (copiar a carpeta `public/`)
 
 **Configuración FTP recomendada:**
 - **Modo**: Binario
