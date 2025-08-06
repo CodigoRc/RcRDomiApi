@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Contador en Tiem Real - RDOMI</title>
+    <title>📊 Debug Counter en Tiempo Real - RDOMI</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         * {
@@ -14,17 +14,17 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             padding: 20px;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             overflow: hidden;
         }
 
@@ -77,69 +77,57 @@
             padding: 30px;
         }
 
-        .counter-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+        .counter-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
             margin-bottom: 30px;
-        }
-
-        .counter-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-            border: 2px solid #e9ecef;
-            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .counter-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-        }
-
-        .counter-card.updated {
-            border-color: #28a745;
-            animation: highlight 1s ease;
-        }
-
-        .service-id {
-            font-size: 0.9em;
-            color: #6c757d;
-            margin-bottom: 10px;
-            font-weight: 500;
+        .counter-display h2 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            opacity: 0.9;
         }
 
         .counter-value {
-            font-size: 3em;
+            font-size: 4em;
             font-weight: 700;
-            color: #2c3e50;
             margin-bottom: 10px;
             transition: all 0.3s ease;
         }
 
+        .counter-value.updated {
+            animation: counterUpdate 0.5s ease;
+        }
+
         .counter-label {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .increment-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
             font-size: 1.1em;
-            color: #495057;
-            margin-bottom: 15px;
-        }
-
-        .stats-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.9em;
-        }
-
-        .stats-label {
-            color: #6c757d;
-        }
-
-        .stats-value {
             font-weight: 600;
-            color: #495057;
+            opacity: 0;
+            transform: translateY(-20px) scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        .increment-badge.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
         }
 
         .controls {
@@ -228,6 +216,45 @@
             box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
         }
 
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            border: 2px solid #e9ecef;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
         .logs {
             background: #2c3e50;
             color: #ecf0f1;
@@ -266,42 +293,48 @@
             color: #3498db;
         }
 
+        .log-warning {
+            color: #f39c12;
+        }
+
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
 
-        @keyframes highlight {
-            0% { background-color: rgba(40, 167, 69, 0.1); }
-            100% { background-color: white; }
+        @keyframes counterUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
-        .counter-increment {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #28a745;
-            color: white;
-            padding: 5px 10px;
+        .auto-test {
+            background: #e3f2fd;
+            padding: 20px;
             border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: 600;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
+            margin-bottom: 20px;
         }
 
-        .counter-increment.show {
-            opacity: 1;
-            transform: translateY(0);
+        .auto-test h4 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+
+        .auto-test-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .auto-test-controls input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
         @media (max-width: 768px) {
-            .counter-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .button-group {
                 flex-direction: column;
             }
@@ -309,14 +342,22 @@
             .header h1 {
                 font-size: 2em;
             }
+
+            .counter-value {
+                font-size: 3em;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Contador en Tiempo Real</h1>
-            <p>Monitoreo en vivo de estadísticas de servicios RDOMI</p>
+            <h1>📊 Debug Counter en Tiempo Real</h1>
+            <p>Monitoreo y prueba del sistema de estadísticas RDOMI</p>
         </div>
 
         <div class="status-bar">
@@ -330,6 +371,35 @@
         </div>
 
         <div class="main-content">
+            <!-- Contador Principal -->
+            <div class="counter-display">
+                <h2>🎯 Contador Actual</h2>
+                <div class="counter-value" id="mainCounter">0</div>
+                <div class="counter-label">Total de visualizaciones</div>
+                <div class="increment-badge" id="incrementBadge">+1</div>
+            </div>
+
+            <!-- Estadísticas Detalladas -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="todayTotal">0</div>
+                    <div class="stat-label">Hoy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="uniqueUsers">0</div>
+                    <div class="stat-label">Usuarios únicos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="currentListeners">0</div>
+                    <div class="stat-label">Oyentes actuales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="lastUpdate">--</div>
+                    <div class="stat-label">Última actualización</div>
+                </div>
+            </div>
+
+            <!-- Controles de Prueba -->
             <div class="controls">
                 <h3>🎛️ Controles de Prueba</h3>
                 <div class="form-group">
@@ -339,19 +409,28 @@
                 <div class="button-group">
                     <button class="btn btn-primary" onclick="testBasicIncrement()">🚀 Test Básico</button>
                     <button class="btn btn-success" onclick="testAdvancedIncrement()">⚡ Test Avanzado</button>
-                    <button class="btn btn-warning" onclick="clearLogs()">🗑️ Limpiar Logs</button>
+                    <button class="btn btn-warning" onclick="getCurrentStats()">📊 Obtener Stats</button>
+                    <button class="btn btn-danger" onclick="clearLogs()">🗑️ Limpiar Logs</button>
                     <a href="rdd.html" class="btn btn-primary">🔧 Debug Manual</a>
                 </div>
             </div>
 
-            <div class="counter-grid" id="counterGrid">
-                <!-- Los contadores se generarán dinámicamente -->
+            <!-- Auto Test -->
+            <div class="auto-test">
+                <h4>🤖 Auto Test (Simulación)</h4>
+                <div class="auto-test-controls">
+                    <label>Intervalo (segundos):</label>
+                    <input type="number" id="autoTestInterval" value="5" min="1" max="60">
+                    <button class="btn btn-success" onclick="startAutoTest()">▶️ Iniciar Auto Test</button>
+                    <button class="btn btn-danger" onclick="stopAutoTest()">⏹️ Detener Auto Test</button>
+                </div>
             </div>
 
+            <!-- Logs -->
             <div class="logs" id="logs">
                 <div class="log-entry">
                     <span class="log-time">[Sistema]</span>
-                    <span class="log-message log-info">Iniciando monitoreo en tiempo real...</span>
+                    <span class="log-message log-info">Iniciando debug del contador en tiempo real...</span>
                 </div>
             </div>
         </div>
@@ -364,14 +443,21 @@
         
         // Estado global
         let socket;
-        let counters = new Map();
+        let currentServiceId = 123;
+        let currentCount = 0;
         let isConnected = false;
+        let autoTestInterval = null;
 
         // Elementos DOM
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
         const clientCount = document.getElementById('clientCount');
-        const counterGrid = document.getElementById('counterGrid');
+        const mainCounter = document.getElementById('mainCounter');
+        const incrementBadge = document.getElementById('incrementBadge');
+        const todayTotal = document.getElementById('todayTotal');
+        const uniqueUsers = document.getElementById('uniqueUsers');
+        const currentListeners = document.getElementById('currentListeners');
+        const lastUpdate = document.getElementById('lastUpdate');
         const logs = document.getElementById('logs');
 
         // Inicializar WebSocket
@@ -387,6 +473,9 @@
                 isConnected = true;
                 updateConnectionStatus(true);
                 log('✅ Conectado al servidor WebSocket', 'success');
+                
+                // Obtener estadísticas actuales al conectar
+                getCurrentStats();
             });
 
             socket.on('disconnect', () => {
@@ -423,86 +512,80 @@
         // Manejar actualización de contador
         function handleCounterUpdate(data) {
             const serviceId = data.service_id;
+            const newCount = data.current_count || 0;
+            const increment = newCount - currentCount;
             
             log(`📊 Actualización recibida para servicio ${serviceId}: ${JSON.stringify(data)}`, 'info');
             
-            // Actualizar o crear contador
-            if (!counters.has(serviceId)) {
-                createCounterCard(serviceId, data);
-            } else {
-                updateCounterCard(serviceId, data);
+            // Solo actualizar si es el servicio que estamos monitoreando
+            if (serviceId == currentServiceId) {
+                updateCounterDisplay(newCount, increment, data);
+                log(`📈 Servicio ${serviceId}: ${currentCount} → ${newCount} (+${increment})`, 'success');
             }
-            
-            counters.set(serviceId, data);
         }
 
-        // Crear tarjeta de contador
-        function createCounterCard(serviceId, data) {
-            const card = document.createElement('div');
-            card.className = 'counter-card';
-            card.id = `counter-${serviceId}`;
-            
-            card.innerHTML = `
-                <div class="service-id">Service ID: ${serviceId}</div>
-                <div class="counter-value" id="value-${serviceId}">${data.current_count || 0}</div>
-                <div class="counter-label">Contador Total</div>
-                <div class="stats-row">
-                    <span class="stats-label">Hoy:</span>
-                    <span class="stats-value" id="today-${serviceId}">${data.today_total || 0}</span>
-                </div>
-                <div class="stats-row">
-                    <span class="stats-label">Usuarios únicos:</span>
-                    <span class="stats-value" id="unique-${serviceId}">${data.today_unique || 0}</span>
-                </div>
-                <div class="stats-row">
-                    <span class="stats-label">Oyentes actuales:</span>
-                    <span class="stats-value" id="listeners-${serviceId}">${data.current_listeners || 0}</span>
-                </div>
-                <div class="counter-increment" id="increment-${serviceId}">+1</div>
-            `;
-            
-            counterGrid.appendChild(card);
-            log(`🆕 Contador creado para servicio ${serviceId}`, 'success');
-        }
+        // Actualizar display del contador
+        function updateCounterDisplay(newCount, increment, data) {
+            // Actualizar contador principal
+            mainCounter.textContent = newCount;
+            currentCount = newCount;
 
-        // Actualizar tarjeta de contador
-        function updateCounterCard(serviceId, data) {
-            const card = document.getElementById(`counter-${serviceId}`);
-            if (!card) return;
+            // Mostrar efecto de actualización
+            mainCounter.classList.add('updated');
+            setTimeout(() => {
+                mainCounter.classList.remove('updated');
+            }, 500);
 
-            const oldValue = parseInt(document.getElementById(`value-${serviceId}`).textContent) || 0;
-            const newValue = data.current_count || 0;
-            const increment = newValue - oldValue;
-
-            // Actualizar valores
-            document.getElementById(`value-${serviceId}`).textContent = newValue;
-            document.getElementById(`today-${serviceId}`).textContent = data.today_total || 0;
-            document.getElementById(`unique-${serviceId}`).textContent = data.today_unique || 0;
-            document.getElementById(`listeners-${serviceId}`).textContent = data.current_listeners || 0;
-
-            // Mostrar incremento
+            // Mostrar badge de incremento
             if (increment > 0) {
-                const incrementEl = document.getElementById(`increment-${serviceId}`);
-                incrementEl.textContent = `+${increment}`;
-                incrementEl.classList.add('show');
+                incrementBadge.textContent = `+${increment}`;
+                incrementBadge.classList.add('show');
                 
                 setTimeout(() => {
-                    incrementEl.classList.remove('show');
+                    incrementBadge.classList.remove('show');
                 }, 2000);
             }
 
-            // Efecto de actualización
-            card.classList.add('updated');
-            setTimeout(() => {
-                card.classList.remove('updated');
-            }, 1000);
+            // Actualizar estadísticas
+            todayTotal.textContent = data.today_total || 0;
+            uniqueUsers.textContent = data.today_unique || 0;
+            currentListeners.textContent = data.current_listeners || 0;
+            lastUpdate.textContent = new Date().toLocaleTimeString();
+        }
 
-            log(`📈 Servicio ${serviceId}: ${oldValue} → ${newValue} (+${increment})`, 'success');
+        // Obtener estadísticas actuales
+        async function getCurrentStats() {
+            const serviceId = document.getElementById('serviceId').value || currentServiceId;
+            
+            try {
+                log(`📊 Obteniendo estadísticas actuales para servicio ${serviceId}...`, 'info');
+                
+                const response = await fetch(`${API_BASE}/rdomi/sts/service/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ service_id: parseInt(serviceId) })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentCount = data.count || 0;
+                    mainCounter.textContent = currentCount;
+                    log(`✅ Estadísticas actuales: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    log(`❌ Error obteniendo estadísticas: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error de conexión: ${error.message}`, 'error');
+            }
         }
 
         // Funciones de prueba
         async function testBasicIncrement() {
-            const serviceId = document.getElementById('serviceId').value;
+            const serviceId = document.getElementById('serviceId').value || currentServiceId;
             if (!serviceId) {
                 log('❌ Ingresa un Service ID', 'error');
                 return;
@@ -533,7 +616,7 @@
         }
 
         async function testAdvancedIncrement() {
-            const serviceId = document.getElementById('serviceId').value;
+            const serviceId = document.getElementById('serviceId').value || currentServiceId;
             if (!serviceId) {
                 log('❌ Ingresa un Service ID', 'error');
                 return;
@@ -563,6 +646,29 @@
             }
         }
 
+        // Auto test
+        function startAutoTest() {
+            const interval = parseInt(document.getElementById('autoTestInterval').value) * 1000;
+            
+            if (autoTestInterval) {
+                clearInterval(autoTestInterval);
+            }
+            
+            log(`🤖 Iniciando auto test cada ${interval/1000} segundos...`, 'warning');
+            
+            autoTestInterval = setInterval(() => {
+                testBasicIncrement();
+            }, interval);
+        }
+
+        function stopAutoTest() {
+            if (autoTestInterval) {
+                clearInterval(autoTestInterval);
+                autoTestInterval = null;
+                log('⏹️ Auto test detenido', 'warning');
+            }
+        }
+
         // Funciones de utilidad
         function log(message, type = 'info') {
             const timestamp = new Date().toLocaleTimeString();
@@ -582,9 +688,16 @@
             logs.innerHTML = '<div class="log-entry"><span class="log-time">[Sistema]</span><span class="log-message log-info">Logs limpiados...</span></div>';
         }
 
+        // Actualizar Service ID cuando cambie
+        document.getElementById('serviceId').addEventListener('change', function() {
+            currentServiceId = parseInt(this.value) || 123;
+            log(`🔄 Service ID cambiado a: ${currentServiceId}`, 'info');
+            getCurrentStats();
+        });
+
         // Inicializar cuando se carga la página
         document.addEventListener('DOMContentLoaded', () => {
-            log('🎵 RDOMI Broadcasting - Contador en Tiempo Real', 'info');
+            log('🎵 RDOMI Broadcasting - Debug Counter en Tiempo Real', 'info');
             initWebSocket();
         });
 
