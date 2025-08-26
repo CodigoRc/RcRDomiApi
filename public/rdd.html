@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔧 Test Incremento Manual - DEBUG</title>
+    <title>🚀 RDOMI WebSocket & Stats Tester - COMPLETE SYSTEM</title>
     <style>
         body {
             font-family: monospace;
@@ -68,40 +68,142 @@
             color: #383d41;
             border: 1px solid #d6d8db;
         }
+        .websocket {
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b3d9ff;
+        }
+        .info {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: #e9ecef;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background: #007bff;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-connecting { background: #ffc107; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 Test Incremento Manual - DEBUG MODE</h1>
-        <p><strong>Propósito:</strong> Diagnosticar errores 401/500 en el endpoint de incremento manual.</p>
+        <h1>🚀 RDOMI WebSocket & Stats Tester</h1>
+        <p><strong>Sistema Completo:</strong> Test de estadísticas manuales + WebSocket en tiempo real + CORS</p>
         
-        <form id="testForm">
-            <div class="form-group">
-                <label for="serviceId">Service ID (Estación):</label>
-                <input type="number" id="serviceId" value="123" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="incrementAmount">Cantidad a incrementar:</label>
-                <input type="number" id="incrementAmount" value="1" min="1" max="1000" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="adminKey">Clave Admin:</label>
-                <input type="text" id="adminKey" value="RDOMI_ADMIN_2024" required>
-            </div>
-            
-            <button type="submit">🚀 TEST - Incrementar</button>
-        </form>
+        <!-- Status Indicators -->
+        <div id="system-status" class="result info">
+            <strong>🔄 Estado del Sistema:</strong><br>
+            <span class="status-indicator status-offline" id="websocket-status"></span>WebSocket: <span id="websocket-text">Desconectado</span><br>
+            <span class="status-indicator status-offline" id="api-status"></span>API Laravel: <span id="api-text">No verificado</span>
+        </div>
 
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('manual-increment')">📊 Incremento Manual</button>
+            <button class="tab" onclick="switchTab('websocket-test')">🔌 WebSocket Test</button>
+            <button class="tab" onclick="switchTab('system-check')">⚙️ Sistema Check</button>
+        </div>
+
+        <!-- Tab 1: Manual Increment -->
+        <div id="manual-increment" class="tab-content active">
+            <h3>📊 Test Incremento Manual de Estadísticas</h3>
+            <form id="testForm">
+                <div class="form-group">
+                    <label for="serviceId">Service ID (Estación):</label>
+                    <input type="number" id="serviceId" value="1596" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="incrementAmount">Cantidad a incrementar:</label>
+                    <input type="number" id="incrementAmount" value="1" min="1" max="1000" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminKey">Clave Admin:</label>
+                    <input type="text" id="adminKey" value="RDOMI_ADMIN_2024" required>
+                </div>
+                
+                <button type="submit">🚀 Incrementar Estadísticas</button>
+            </form>
+        </div>
+
+        <!-- Tab 2: WebSocket Test -->
+        <div id="websocket-test" class="tab-content">
+            <h3>🔌 Test WebSocket en Tiempo Real</h3>
+            <div class="form-group">
+                <label for="ws-service-id">Service ID para escuchar:</label>
+                <input type="number" id="ws-service-id" value="1596">
+            </div>
+            <button onclick="connectWebSocket()">🔌 Conectar WebSocket</button>
+            <button onclick="disconnectWebSocket()">❌ Desconectar</button>
+            <button onclick="sendTestMessage()">📤 Enviar Mensaje Test</button>
+            
+            <div id="websocket-messages" class="result websocket" style="display: none;">
+                <strong>📡 Mensajes WebSocket:</strong><br>
+                <div id="ws-content"></div>
+            </div>
+        </div>
+
+        <!-- Tab 3: System Check -->
+        <div id="system-check" class="tab-content">
+            <h3>⚙️ Verificación Completa del Sistema</h3>
+            <button onclick="checkSystemHealth()">🔍 Verificar Sistema Completo</button>
+            <button onclick="testCORS()">🌐 Test CORS</button>
+            <button onclick="checkWebSocketServer()">⚡ Check WebSocket Server</button>
+            
+            <div id="system-results" class="result info" style="display: none;"></div>
+        </div>
+
+        <!-- Results -->
         <div id="debug-info" class="result debug" style="display: none;"></div>
         <div id="result" class="result" style="display: none;"></div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
+        // Configuración
         const API_BASE = window.location.origin + '/api';
-        const endpoint = `${API_BASE}/rdomi/sts/admin/manual-increment`;
+        const WEBSOCKET_URL = 'https://rx.netdomi.com';
+        const endpoints = {
+            manualIncrement: `${API_BASE}/rdomi/sts/admin/manual-increment`,
+            websocketPing: `https://rx.netdomi.com/api/websocket-ping`,
+            health: `https://rx.netdomi.com:3001/health`
+        };
 
+        // Variables globales
+        let socket = null;
+        let isWebSocketConnected = false;
+
+        // Utilidades
         function showDebug(info) {
             const debugDiv = document.getElementById('debug-info');
             debugDiv.textContent = JSON.stringify(info, null, 2);
@@ -115,6 +217,29 @@
             resultDiv.style.display = 'block';
         }
 
+        function updateStatus(type, status, text) {
+            const indicator = document.getElementById(`${type}-status`);
+            const textElement = document.getElementById(`${type}-text`);
+            
+            indicator.className = `status-indicator status-${status}`;
+            textElement.textContent = text;
+        }
+
+        function switchTab(tabName) {
+            // Ocultar todos los tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Mostrar tab seleccionado
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Tab 1: Manual Increment
         document.getElementById('testForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -130,14 +255,14 @@
 
             showDebug({
                 timestamp: new Date().toISOString(),
-                endpoint: endpoint,
+                endpoint: endpoints.manualIncrement,
                 method: 'POST',
                 payload: payload,
                 status: 'Enviando petición...'
             });
 
             try {
-                const response = await fetch(endpoint, {
+                const response = await fetch(endpoints.manualIncrement, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -151,7 +276,7 @@
 
                 showDebug({
                     timestamp: new Date().toISOString(),
-                    endpoint: endpoint,
+                    endpoint: endpoints.manualIncrement,
                     method: 'POST',
                     payload: payload,
                     response_status: response.status,
@@ -161,31 +286,243 @@
                 });
 
                 if (response.ok) {
-                    showResult(`✅ ÉXITO!\n\nRespuesta:\n${JSON.stringify(responseData, null, 2)}`, 'success');
+                    showResult(`✅ ÉXITO!\n\nRespuesta:\n${JSON.stringify(responseData, null, 2)}\n\n🔔 Si el WebSocket está conectado, deberías ver el mensaje en tiempo real.`, 'success');
+                    updateStatus('api', 'online', 'Funcionando correctamente');
                 } else {
                     showResult(`❌ ERROR ${response.status}\n\nRespuesta:\n${JSON.stringify(responseData, null, 2)}`, 'error');
+                    updateStatus('api', 'offline', `Error ${response.status}`);
                 }
 
             } catch (error) {
                 showDebug({
                     timestamp: new Date().toISOString(),
-                    endpoint: endpoint,
+                    endpoint: endpoints.manualIncrement,
                     error_type: 'fetch_error',
                     error_message: error.message,
                     error_stack: error.stack
                 });
 
                 showResult(`❌ ERROR DE CONEXIÓN\n\nError: ${error.message}`, 'error');
+                updateStatus('api', 'offline', 'Error de conexión');
             }
         });
 
-        // Debug inicial
-        showDebug({
-            timestamp: new Date().toISOString(),
-            current_url: window.location.href,
-            api_base: API_BASE,
-            endpoint: endpoint,
-            status: 'Página cargada, lista para testing'
+        // Tab 2: WebSocket Functions
+        function connectWebSocket() {
+            if (socket && isWebSocketConnected) {
+                addWebSocketMessage('⚠️ Ya existe una conexión WebSocket activa');
+                return;
+            }
+
+            updateStatus('websocket', 'connecting', 'Conectando...');
+            addWebSocketMessage('🔌 Iniciando conexión WebSocket...');
+
+            socket = io(WEBSOCKET_URL, {
+                timeout: 5000,
+                forceNew: true,
+                reconnection: true,
+                reconnectionDelay: 10000,
+                reconnectionAttempts: 3
+            });
+
+            socket.on('connect', () => {
+                isWebSocketConnected = true;
+                updateStatus('websocket', 'online', 'Conectado a rx.netdomi.com');
+                addWebSocketMessage('✅ WebSocket conectado exitosamente!');
+                showResult('✅ WebSocket conectado a rx.netdomi.com', 'success');
+            });
+
+            socket.on('disconnect', () => {
+                isWebSocketConnected = false;
+                updateStatus('websocket', 'offline', 'Desconectado');
+                addWebSocketMessage('❌ WebSocket desconectado');
+            });
+
+            socket.on('updateCounter', (data) => {
+                const serviceId = parseInt(document.getElementById('ws-service-id').value);
+                const isForThisService = !serviceId || data.service_id === serviceId;
+                
+                if (isForThisService) {
+                    addWebSocketMessage(`📊 DATOS RECIBIDOS:\n${JSON.stringify(data, null, 2)}`, true);
+                } else {
+                    addWebSocketMessage(`📢 Mensaje para otra estación (${data.service_id})`);
+                }
+            });
+
+            socket.on('connect_error', (error) => {
+                updateStatus('websocket', 'offline', 'Error de conexión');
+                addWebSocketMessage(`❌ Error de conexión: ${error.message}`);
+                showResult(`❌ Error conectando WebSocket: ${error.message}`, 'error');
+            });
+        }
+
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                isWebSocketConnected = false;
+                updateStatus('websocket', 'offline', 'Desconectado');
+                addWebSocketMessage('🔌 WebSocket desconectado manualmente');
+                showResult('WebSocket desconectado', 'info');
+            }
+        }
+
+        function sendTestMessage() {
+            const serviceId = parseInt(document.getElementById('ws-service-id').value);
+            const testPayload = {
+                service_id: serviceId,
+                current_count: Math.floor(Math.random() * 1000) + 100,
+                type: 'test_from_rdd',
+                timestamp: new Date().toISOString()
+            };
+
+            fetch(endpoints.websocketPing, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(testPayload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                addWebSocketMessage(`📤 Mensaje test enviado:\n${JSON.stringify(testPayload, null, 2)}`);
+                showResult(`✅ Mensaje test enviado al WebSocket`, 'success');
+            })
+            .catch(error => {
+                addWebSocketMessage(`❌ Error enviando mensaje test: ${error.message}`);
+                showResult(`❌ Error enviando mensaje test: ${error.message}`, 'error');
+            });
+        }
+
+        function addWebSocketMessage(message, highlight = false) {
+            const messagesDiv = document.getElementById('websocket-messages');
+            const contentDiv = document.getElementById('ws-content');
+            
+            messagesDiv.style.display = 'block';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = '10px';
+            messageElement.style.padding = '5px';
+            messageElement.style.background = highlight ? '#e7f3ff' : 'transparent';
+            messageElement.style.border = highlight ? '1px solid #007bff' : 'none';
+            messageElement.style.borderRadius = '3px';
+            messageElement.innerHTML = `<strong>[${timestamp}]</strong> ${message.replace(/\n/g, '<br>')}`;
+            
+            contentDiv.appendChild(messageElement);
+            contentDiv.scrollTop = contentDiv.scrollHeight;
+        }
+
+        // Tab 3: System Check Functions
+        async function checkSystemHealth() {
+            const results = document.getElementById('system-results');
+            results.style.display = 'block';
+            results.innerHTML = '<strong>🔍 Verificando sistema...</strong><br><br>';
+
+            // Test API Laravel
+            try {
+                const apiTest = await fetch(`${API_BASE}/rdomi/sts/admin/manual-increment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ service_id: 1, increment_amount: 0, admin_key: 'test' })
+                });
+                results.innerHTML += `✅ API Laravel: Responde (${apiTest.status})<br>`;
+            } catch (error) {
+                results.innerHTML += `❌ API Laravel: Error - ${error.message}<br>`;
+            }
+
+            // Test WebSocket Server Health
+            try {
+                const wsTest = await fetch(endpoints.health);
+                if (wsTest.ok) {
+                    results.innerHTML += `✅ WebSocket Server: Online<br>`;
+                } else {
+                    results.innerHTML += `⚠️ WebSocket Server: Responde con ${wsTest.status}<br>`;
+                }
+            } catch (error) {
+                results.innerHTML += `❌ WebSocket Server: No accesible - ${error.message}<br>`;
+            }
+
+            // Test CORS
+            results.innerHTML += `<br><strong>🌐 Testing CORS...</strong><br>`;
+            testCORS(results);
+        }
+
+        async function testCORS(targetDiv = null) {
+            const results = targetDiv || document.getElementById('system-results');
+            if (!targetDiv) {
+                results.style.display = 'block';
+                results.innerHTML = '<strong>🌐 Testing CORS...</strong><br><br>';
+            }
+
+            try {
+                const corsTest = await fetch('https://rx.netdomi.com/socket.io/', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                results.innerHTML += `✅ CORS: Headers OK (${corsTest.status})<br>`;
+                
+                // Check for duplicate headers
+                const corsHeader = corsTest.headers.get('Access-Control-Allow-Origin');
+                if (corsHeader && corsHeader.includes(',')) {
+                    results.innerHTML += `⚠️ CORS: ALERTA - Headers duplicados detectados: ${corsHeader}<br>`;
+                } else {
+                    results.innerHTML += `✅ CORS: Sin duplicación de headers<br>`;
+                }
+            } catch (error) {
+                results.innerHTML += `❌ CORS: Error - ${error.message}<br>`;
+            }
+        }
+
+        async function checkWebSocketServer() {
+            const results = document.getElementById('system-results');
+            results.style.display = 'block';
+            results.innerHTML = '<strong>⚡ Verificando WebSocket Server...</strong><br><br>';
+
+            // Test directo al puerto 3001
+            try {
+                const directTest = await fetch('https://rx.netdomi.com:3001/health');
+                const data = await directTest.json();
+                results.innerHTML += `✅ Puerto 3001: ${JSON.stringify(data)}<br>`;
+            } catch (error) {
+                results.innerHTML += `❌ Puerto 3001: ${error.message}<br>`;
+            }
+
+            // Test vía Nginx proxy
+            try {
+                const proxyTest = await fetch('https://rx.netdomi.com/socket.io/');
+                results.innerHTML += `✅ Nginx Proxy: Funcional (${proxyTest.status})<br>`;
+            } catch (error) {
+                results.innerHTML += `❌ Nginx Proxy: ${error.message}<br>`;
+            }
+
+            // Test conexión Socket.IO
+            results.innerHTML += `<br><strong>🔌 Testing Socket.IO...</strong><br>`;
+            const testSocket = io(WEBSOCKET_URL, { timeout: 3000 });
+            
+            testSocket.on('connect', () => {
+                results.innerHTML += `✅ Socket.IO: Conexión exitosa<br>`;
+                testSocket.disconnect();
+            });
+
+            testSocket.on('connect_error', (error) => {
+                results.innerHTML += `❌ Socket.IO: Error de conexión - ${error.message}<br>`;
+            });
+        }
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            showDebug({
+                timestamp: new Date().toISOString(),
+                current_url: window.location.href,
+                api_base: API_BASE,
+                websocket_url: WEBSOCKET_URL,
+                endpoints: endpoints,
+                status: 'Sistema RDD cargado - Todas las funciones disponibles'
+            });
+
+            // Auto-verificar sistema al cargar
+            setTimeout(checkSystemHealth, 1000);
         });
     </script>
 </body>

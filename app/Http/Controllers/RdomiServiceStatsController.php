@@ -10,6 +10,43 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Events\StatsUpdated;
 
+/**
+ * CONTROLADOR DE ESTADÍSTICAS DE SERVICIOS RDOMI
+ * 
+ * SISTEMA DE NOTIFICACIONES WEBSOCKET:
+ * 
+ * 1. INCREMENTO NORMAL (/ping):
+ *    - Endpoint: POST /api/rdomi/sts/service/ping
+ *    - Rate limiting: 9 minutos por IP
+ *    - Notifica: view_increment
+ * 
+ * 2. INCREMENTO AVANZADO (/ping-advanced):
+ *    - Endpoint: POST /api/rdomi/sts/service/ping-advanced
+ *    - Rate limiting: 5 minutos por usuario hash
+ *    - Notifica: view_increment_advanced
+ * 
+ * 3. INCREMENTO MANUAL (Admin):
+ *    - Endpoint: POST /api/rdomi/sts/admin/manual-increment
+ *    - Sin rate limiting
+ *    - Notifica: manual_increment
+ * 
+ * 4. NOTIFICACIÓN FORZADA:
+ *    - Endpoint: POST /api/rdomi/sts/service/force-notify
+ *    - Para testing y sincronización
+ *    - Notifica: force_notify
+ * 
+ * TODOS LOS MÉTODOS DE INCREMENTO:
+ * ✅ Incrementan la base de datos
+ * ✅ Notifican al WebSocket (endpoint directo + proxy)
+ * ✅ Emiten broadcast local como fallback
+ * ✅ Incluyen logging detallado
+ * ✅ Manejan errores sin interrumpir la respuesta
+ * 
+ * ENDPOINTS WEBSOCKET UTILIZADOS:
+ * - Directo: https://rx.netdomi.com:3001/api/ping
+ * - Proxy: https://rx.netdomi.com/api/websocket-ping
+ * - Fallback: Laravel Broadcast Events
+ */
 class RdomiServiceStatsController extends Controller
 {
     // ================================================================
@@ -62,22 +99,8 @@ class RdomiServiceStatsController extends Controller
             // Guardar timestamp en cache por 9 minutos (540 segundos)
             Cache::put($rateLimitKey, now()->timestamp, 540);
 
-            // ENVIAR ACTUALIZACIÓN AL WEBSOCKET - MODIFICADO AHORA
-            try {
-                $currentCount = $stats->fresh()->count; // Obtener el count actualizado
-                \Log::info("Enviando al WebSocket: service_id={$serviceId}, count={$currentCount}");
-                
-                $response = \Illuminate\Support\Facades\Http::post('https://rx.netdomi.com/api/websocket-ping', [
-                    'service_id' => $serviceId,
-                    'current_count' => $currentCount,
-                    'type' => 'view_increment'
-                ]);
-                
-                \Log::info("Respuesta WebSocket: " . $response->body());
-            } catch (\Exception $e) {
-                // Log error pero no interrumpir la respuesta
-                \Log::error('Error notificando al servidor Socket.IO: ' . $e->getMessage());
-            }
+            // ENVIAR ACTUALIZACIÓN AL WEBSOCKET - CORREGIDO Y ESTANDARIZADO
+            $this->notifyWebSocket($serviceId, $stats->fresh()->count, 'view_increment');
 
             return response()->json([
                 'message' => 'Request processed successfully',
@@ -239,17 +262,8 @@ class RdomiServiceStatsController extends Controller
             // 8. PREPARAR RESPUESTA ENRIQUECIDA
             $enrichedResponse = $this->getEnrichedResponse($serviceId);
             
-            // 9. EMITIR AL NUEVO SERVIDOR SOCKET.IO (Node.js)
-            // Mejor práctica: notificar en tiempo real vía HTTP al backend de sockets externo
-            try {
-                \Illuminate\Support\Facades\Http::post('https://rx.netdomi.com:3001/api/ping', [
-                    'service_id' => $serviceId,
-                    'data' => $enrichedResponse
-                ]);
-            } catch (\Exception $e) {
-                // Loguea el error pero no interrumpe la respuesta principal
-                \Log::error('Error notificando al servidor Socket.IO: ' . $e->getMessage());
-            }
+            // 9. EMITIR AL NUEVO SERVIDOR SOCKET.IO (Node.js) - CORREGIDO Y ESTANDARIZADO
+            $this->notifyWebSocket($serviceId, $enrichedResponse['current_count'], 'view_increment_advanced');
             
             // broadcast(new StatsUpdated($serviceId, $enrichedResponse)); // Eliminado: ahora solo Node.js
 
@@ -689,6 +703,82 @@ class RdomiServiceStatsController extends Controller
         // broadcast(new StatsUpdated($serviceId, $data));
     }
 
+    /**
+     * Incremento manual de estadísticas (Admin)
+     * Endpoint: POST /api/rdomi/sts/admin/manual-increment
+     * Para testing y ajustes manuales por parte del administrador
+     */
+    public function manualIncrement(Request $request)
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|integer',
+                'increment_amount' => 'required|integer|min:1|max:1000',
+                'admin_key' => 'required|string'
+            ]);
+
+            $serviceId = $request->input('service_id');
+            $incrementAmount = $request->input('increment_amount');
+            $adminKey = $request->input('admin_key');
+
+            // Verificar clave de administrador
+            if ($adminKey !== 'RDOMI_ADMIN_2024') {
+                return response()->json([
+                    'message' => 'Unauthorized: Invalid admin key',
+                    'code' => 401
+                ], 401);
+            }
+
+            // Buscar o crear el registro de estadísticas para este servicio
+            $stats = ServiceStats::firstOrCreate(
+                [
+                    'service_id' => $serviceId,
+                    'type' => 'view'
+                ],
+                [
+                    'count' => 0
+                ]
+            );
+
+            // Incrementar el contador manualmente
+            $stats->increment('count', $incrementAmount);
+            
+            // Obtener el count actualizado
+            $currentCount = $stats->fresh()->count;
+            
+            // Log de la acción manual
+            \Log::info("Incremento manual realizado: service_id={$serviceId}, amount={$incrementAmount}, new_total={$currentCount}");
+
+            // ENVIAR ACTUALIZACIÓN AL WEBSOCKET - CORREGIDO Y ESTANDARIZADO
+            $this->notifyWebSocket($serviceId, $currentCount, 'manual_increment');
+
+            return response()->json([
+                'message' => 'Manual increment processed successfully',
+                'service_id' => $serviceId,
+                'increment_amount' => $incrementAmount,
+                'current_count' => $currentCount,
+                'previous_count' => $currentCount - $incrementAmount,
+                'admin_action' => true,
+                'timestamp' => now()->toISOString(),
+                'code' => 200
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+                'code' => 422
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error en incremento manual: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Internal server error during manual increment',
+                'error' => $e->getMessage(),
+                'code' => 500
+            ], 500);
+        }
+    }
+
     // Métodos adicionales para dashboard (implementación básica)
     private function getLiveStats($serviceId) { return ['status' => 'active']; }
     private function getTodayStats($serviceId) { return ['total' => 0]; }
@@ -700,4 +790,149 @@ class RdomiServiceStatsController extends Controller
     private function getRealtimeStats($serviceId) { return ['current_count' => 0, 'hourly_count' => 0, 'unique_users' => 0, 'peak_today' => 0, 'trending_score' => 0]; }
     private function calculateGrowthTrend($data) { return 0; }
     private function trackSession($serviceId, $userHash, $request) { /* Implementar */ }
+
+    /**
+     * MÉTODO PÚBLICO: Forzar notificación al WebSocket
+     * Útil para testing y sincronización manual
+     * Endpoint: POST /api/rdomi/sts/service/force-notify
+     */
+    public function forceWebSocketNotification(Request $request)
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|integer',
+                'current_count' => 'required|integer',
+                'type' => 'string|in:force_notify,manual_sync,test'
+            ]);
+
+            $serviceId = $request->input('service_id');
+            $currentCount = $request->input('current_count');
+            $type = $request->input('type', 'force_notify');
+
+            // Forzar notificación
+            $this->notifyWebSocket($serviceId, $currentCount, $type);
+
+            return response()->json([
+                'message' => 'WebSocket notification forced successfully',
+                'service_id' => $serviceId,
+                'current_count' => $currentCount,
+                'type' => $type,
+                'timestamp' => now()->toISOString(),
+                'code' => 200
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error forcing WebSocket notification',
+                'error' => $e->getMessage(),
+                'code' => 500
+            ], 500);
+        }
+    }
+
+    /**
+     * MÉTODO PÚBLICO: Verificar conectividad del WebSocket
+     * Endpoint: GET /api/rdomi/sts/service/websocket-status
+     */
+    public function getWebSocketStatus()
+    {
+        $status = [
+            'timestamp' => now()->toISOString(),
+            'endpoints' => []
+        ];
+
+        // Verificar endpoint directo
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->get('https://rx.netdomi.com:3001/health');
+            $status['endpoints']['direct'] = [
+                'url' => 'https://rx.netdomi.com:3001/health',
+                'status' => $response->successful() ? 'online' : 'error',
+                'response_code' => $response->status(),
+                'response_body' => $response->body()
+            ];
+        } catch (\Exception $e) {
+            $status['endpoints']['direct'] = [
+                'url' => 'https://rx.netdomi.com:3001/health',
+                'status' => 'offline',
+                'error' => $e->getMessage()
+            ];
+        }
+
+        // Verificar endpoint proxy
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(3)->get('https://rx.netdomi.com/api/websocket-ping');
+            $status['endpoints']['proxy'] = [
+                'url' => 'https://rx.netdomi.com/api/websocket-ping',
+                'status' => $response->successful() ? 'online' : 'error',
+                'response_code' => $response->status(),
+                'response_body' => $response->body()
+            ];
+        } catch (\Exception $e) {
+            $status['endpoints']['proxy'] = [
+                'url' => 'https://rx.netdomi.com/api/websocket-ping',
+                'status' => 'offline',
+                'error' => $e->getMessage()
+            ];
+        }
+
+        return response()->json($status);
+    }
+
+    /**
+     * Notifica al WebSocket para actualizar las estadísticas.
+     * Envía tanto al endpoint directo como al proxy para máxima compatibilidad.
+     * @param int $serviceId
+     * @param int $currentCount
+     * @param string $type
+     */
+    private function notifyWebSocket($serviceId, $currentCount, $type)
+    {
+        $payload = [
+            'service_id' => $serviceId,
+            'current_count' => $currentCount,
+            'type' => $type,
+            'timestamp' => now()->toISOString()
+        ];
+
+        // Log del intento de notificación
+        \Log::info("🔔 Notificando WebSocket: service_id={$serviceId}, count={$currentCount}, type={$type}");
+
+        // 1. INTENTAR ENDPOINT DIRECTO (puerto 3001)
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(5)->post('https://rx.netdomi.com:3001/api/ping', $payload);
+            if ($response->successful()) {
+                \Log::info("✅ WebSocket directo notificado exitosamente: " . $response->body());
+            } else {
+                \Log::warning("⚠️ WebSocket directo respondió con error: " . $response->status() . " - " . $response->body());
+            }
+        } catch (\Exception $e) {
+            \Log::warning("⚠️ WebSocket directo no disponible: " . $e->getMessage());
+        }
+
+        // 2. INTENTAR ENDPOINT PROXY (Nginx)
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(5)->post('https://rx.netdomi.com/api/websocket-ping', $payload);
+            if ($response->successful()) {
+                \Log::info("✅ WebSocket proxy notificado exitosamente: " . $response->body());
+            } else {
+                \Log::warning("⚠️ WebSocket proxy respondió con error: " . $response->status() . " - " . $response->body());
+            }
+        } catch (\Exception $e) {
+            \Log::error("❌ Error notificando al WebSocket proxy: " . $e->getMessage());
+        }
+
+        // 3. BROADCAST LOCAL (Laravel Events) como fallback
+        try {
+            broadcast(new StatsUpdated($serviceId, [
+                'service_id' => $serviceId,
+                'current_count' => $currentCount,
+                'type' => $type,
+                'timestamp' => now()->toISOString(),
+                'source' => 'laravel_broadcast'
+            ]));
+            \Log::info("📡 Broadcast local emitido como fallback");
+        } catch (\Exception $e) {
+            \Log::warning("⚠️ Broadcast local no disponible: " . $e->getMessage());
+        }
+    }
 }

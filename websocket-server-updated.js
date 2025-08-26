@@ -14,12 +14,22 @@ const sslOptions = {
 const server = https.createServer(sslOptions, app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Cambia esto si quieres restringir el origen
+    origin: '*', // Mantener permisivo como estaba funcionando
+    methods: ['GET', 'POST']
   }
 });
 
 // Permitir recibir JSON en peticiones HTTP
 app.use(express.json());
+
+// Configuración CORS simple para Express (sin duplicar headers)
+app.use((req, res, next) => {
+  // Solo setear si no existe ya (evitar duplicación)
+  if (!res.getHeader('Access-Control-Allow-Origin')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  next();
+});
 
 // Middleware de logging
 app.use((req, res, next) => {
