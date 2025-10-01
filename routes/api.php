@@ -295,6 +295,13 @@ Route::post('station/send-hosting-mail', [StationMailController::class, 'sendHos
 Route::post('station/send-tv-mail', [StationMailController::class, 'sendTvMail']);
 Route::post('station/preview-radio-mail', [StationMailController::class, 'previewRadioMail']);
 
+// WHMCS Email Routes
+Route::post('station/send-radio-mail-whmcs', [StationMailController::class, 'sendRadioMailViaWHMCS']);
+Route::post('station/send-tv-mail-whmcs', [StationMailController::class, 'sendTvMailViaWHMCS']);
+
+// WHMCS HTML Email Test Route
+Route::post('station/test-send-html-whmcs', [StationMailController::class, 'testSendHtmlViaWHMCS']);
+
 // Email Testing Routes
 Route::get('mail/test-config', [StationMailController::class, 'testEmailConfig']);
 Route::post('mail/send-test', [StationMailController::class, 'sendTestEmail']);

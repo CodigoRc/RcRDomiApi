@@ -1,0 +1,162 @@
+<center>
+    <table align="center" border="0" cellpadding="0" cellspacing="0" height="100%" width="100%" style="background-color:#f4f4f4;height:100%;margin:0;padding:0;width:100%;">
+        <tr>
+            <td align="center" valign="top" style="padding:30px 0;">
+                <table border="0" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;box-shadow:0 0 10px rgba(0,0,0,0.1);width:600px;max-width:600px;">
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" valign="top">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding:0;">
+                                <tr>
+                                    <td valign="top" style="text-align:center;padding:20px 20px 0 20px;">
+                                        <a href="https://rdomi.com">
+                                            <img src="https://rdomi.com/logomail.png" style="max-width:600px;max-height:60px;border:0;" alt="RDomi" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Body -->
+                    <tr>
+                        <td align="center" valign="top">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding:40px;">
+                                <tr>
+                                    <td valign="top" style="color:#000000;font-size:15px;line-height:1.6;">
+                                        <h2 style="color:#000000;font-size:20px;margin:0 0 10px;font-weight:bold;">RDomi - Acceso a su Servicio de Radio Streaming</h2>
+                                        
+                                        <p style="margin:0 0 15px;">Hola <strong>{$username}</strong>,</p>
+                                        
+                                        <p style="margin:0 0 15px;">¡Bienvenido/a a RDomi! Su cuenta de radio ha sido creada exitosamente y está lista para comenzar a transmitir.</p>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Acceso al Panel de Control</h3>
+                                        
+                                        <p style="margin:0 0 15px;">
+                                            🌐 <strong>URL del Panel:</strong><br>
+                                            <a href="{$panel_url}" style="color:#1a73e8;text-decoration:none;">{$panel_url}</a>
+                                        </p>
+                                        
+                                        <p style="margin:0 0 15px;">
+                                            📧 <strong>Usuario:</strong> {$username}<br>
+                                            🔐 <strong>Contraseña:</strong> {$password}
+                                        </p>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Información de Transmisión</h3>
+                                        
+                                        <p style="margin:0 0 15px;">
+                                            🌐 <strong>IP del servidor:</strong> {$server_host}<br>
+                                            🔌 <strong>Puerto de transmisión:</strong> {$server_port}<br>
+                                            🔑 <strong>Clave de transmisión:</strong> {$stream_password}
+                                        </p>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">URL Segura (SSL) para Reproductores</h3>
+                                        
+                                        <p style="margin:0 0 15px;">
+                                            🌐 <strong>URL de Stream:</strong> <a href="{$stream_url}" style="color:#1a73e8;text-decoration:none;">{$stream_url}</a>
+                                        </p>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Reproductor RDomi</h3>
+                                        
+                                        <p style="margin:0 0 15px;">Puede usar este reproductor en su sitio web copiando el siguiente código:</p>
+                                        
+                                        <div style="background-color:#f8f8f8;padding:15px;border:1px solid #ddd;border-radius:4px;margin:15px 0;font-family:Consolas,'Courier New',monospace;font-size:12px;color:#333;white-space:pre-wrap;word-break:break-all;">{$embed_code}</div>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Extensiones de Audio para Reproductores</h3>
+                                        
+                                        <p style="margin:0 0 15px;">Puede usar estas URLs en diferentes reproductores de audio:</p>
+                                        
+                                        <table style="width:100%;border-collapse:collapse;margin:15px 0;">
+                                            <tr style="background-color:#f8f9fa;">
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;width:150px;">Direct Stream:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/</a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;">MP3 Stream:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/stream.mp3" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/stream.mp3</a>
+                                                </td>
+                                            </tr>
+                                            <tr style="background-color:#f8f9fa;">
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;">M3U Playlist:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/listen.m3u" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/listen.m3u</a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;">PLS Playlist:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/listen.pls" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/listen.pls</a>
+                                                </td>
+                                            </tr>
+                                            <tr style="background-color:#f8f9fa;">
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;">XSPF Playlist:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/listen.xspf" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/listen.xspf</a>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:12px;border:1px solid #ddd;font-weight:bold;color:#333;">ASX Playlist:</td>
+                                                <td style="padding:12px;border:1px solid #ddd;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;">
+                                                    <a href="https://{$server_host}:{$server_port}/listen.asx" style="color:#1a73e8;text-decoration:none;">https://{$server_host}:{$server_port}/listen.asx</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <div style="background-color:#e3f2fd;border:1px solid #2196f3;border-radius:4px;padding:12px;margin:15px 0;">
+                                            <p style="margin:0 0 8px;font-weight:bold;color:#1976d2;">💡 Compatibilidad de Reproductores:</p>
+                                            <ul style="margin:0;padding-left:20px;color:#333;font-size:13px;">
+                                                <li><strong>Direct Stream:</strong> Funciona con la mayoría de reproductores</li>
+                                                <li><strong>MP3:</strong> Preferido por muchos reproductores</li>
+                                                <li><strong>M3U:</strong> VLC, Winamp, iTunes</li>
+                                                <li><strong>PLS:</strong> Winamp y reproductores clásicos</li>
+                                                <li><strong>XSPF:</strong> VLC y reproductores modernos</li>
+                                                <li><strong>ASX:</strong> Windows Media Player</li>
+                                            </ul>
+                                        </div>
+                                        
+                                        <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Soporte Técnico RDomi</h3>
+                                        
+                                        <p style="margin:0 0 15px;">Para cualquier duda o asistencia, nuestro equipo está disponible para ayudarle en todo momento.</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" valign="top">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="padding:30px 20px;">
+                                <tr>
+                                    <td valign="top" style="font-size:13px;color:#555555;text-align:center;">
+                                        <p style="margin:0 0 8px;">
+                                            <a href="https://rdomi.com" style="color:#0053A0;text-decoration:none;">Visitar nuestro sitio web</a> |
+                                            <a href="https://rdomi.com/index.php?rp=/login" style="color:#0053A0;text-decoration:none;">Acceder a su cuenta</a> |
+                                            <a href="https://rdomi.com/submitticket.php" style="color:#0053A0;text-decoration:none;">Soporte técnico</a>
+                                        </p>
+                                        
+                                        <p style="margin:15px 0 5px;font-size:13px;">
+                                            <strong>Contáctenos:</strong><br>
+                                            USA: +1 (415) 702-3258 | RD: +1 (829) 890-7166<br>
+                                            WhatsApp: +1 (829) 890-7166<br>
+                                            Email: <a href="mailto:info@rdomi.com" style="color:#0053A0;text-decoration:none;">info@rdomi.com</a>
+                                        </p>
+                                        
+                                        <p style="margin-top:15px;font-size:12px;color:#777777;">
+                                            © RDomi. Todos los derechos reservados.<br>
+                                            RDomi – Tecnología, innovación y estabilidad a su servicio.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</center>
+

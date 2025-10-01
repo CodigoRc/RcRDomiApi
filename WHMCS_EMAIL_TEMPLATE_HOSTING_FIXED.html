@@ -1,0 +1,53 @@
+<!-- SOLO CONTENIDO DEL CUERPO - WHMCS agrega header/footer automáticamente -->
+<div style="color:#000000;font-size:15px;line-height:1.6;padding:20px;font-family:Arial,Helvetica,sans-serif;">
+    
+    <h2 style="color:#000000;font-size:20px;margin:0 0 20px;font-weight:bold;text-align:center;">RDomi - Acceso a su Servicio de Hosting Web</h2>
+    
+    <p style="margin:0 0 15px;">Estimado/a <strong>{$client_name}</strong>,</p>
+    
+    <p style="margin:0 0 15px;">¡Bienvenido/a a RDomi! Su servicio de Hosting Web para <strong>{$station_name}</strong> ha sido configurado exitosamente y está listo para usar.</p>
+    
+    <div style="background-color:#e3f2fd;border:2px solid #2196f3;border-radius:8px;padding:20px;margin:20px 0;text-align:center;">
+        <p style="margin:0 0 10px;font-size:14px;color:#1976d2;font-weight:bold;">URL de su Sitio Web</p>
+        <p style="margin:0;">
+            <a href="{$site_url}" style="color:#1a73e8;text-decoration:none;font-size:20px;font-weight:bold;">{$site_url}</a>
+        </p>
+    </div>
+    
+    <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Acceso al Panel cPanel</h3>
+    
+    <table style="width:100%;border-collapse:collapse;margin:15px 0;background-color:#f8f9fa;border:1px solid #ddd;border-radius:4px;">
+        <tr>
+            <td style="padding:12px;font-weight:bold;color:#333;width:150px;border-bottom:1px solid #ddd;">URL de cPanel:</td>
+            <td style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all;color:#1a73e8;border-bottom:1px solid #ddd;">
+                <a href="{$cpanel_url}" style="color:#1a73e8;text-decoration:none;">{$cpanel_url}</a>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:12px;font-weight:bold;color:#333;border-bottom:1px solid #ddd;">Usuario:</td>
+            <td style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all;color:#333;border-bottom:1px solid #ddd;">
+                {$cpanel_username}
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:12px;font-weight:bold;color:#333;">Contraseña:</td>
+            <td style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all;color:#333;">
+                {$cpanel_password}
+            </td>
+        </tr>
+    </table>
+    
+    <div style="background-color:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:12px;margin:15px 0;">
+        <p style="margin:0;font-size:13px;color:#856404;">
+            <strong>Importante:</strong> Use cPanel para administrar su sitio web, bases de datos, correos electrónicos y archivos.
+        </p>
+    </div>
+    
+    <h3 style="color:#000000;font-size:16px;border-bottom:1px solid #ccc;padding-bottom:5px;margin:20px 0 10px;font-weight:bold;">Soporte Técnico RDomi</h3>
+    
+    <p style="margin:0 0 15px;">Para cualquier duda o asistencia con la configuración de su servicio de Hosting Web, nuestro equipo está disponible para ayudarle en todo momento.</p>
+
+</div>
+
+<!-- NOTA: WHMCS agregará automáticamente el footer global con información de contacto y enlaces -->
+

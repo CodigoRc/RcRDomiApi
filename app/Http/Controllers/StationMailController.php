@@ -7,10 +7,12 @@ use App\Models\RadioStreaming;
 use App\Models\HostingStation;
 use App\Models\VideoStreaming;
 use App\Models\Activity;
+use App\Models\WhmcsSyncMap;
 use App\Mail\StationRadioMail;
 use App\Mail\StationHostingMail;
 use App\Mail\StationTvMail;
 use App\Mail\DomintCompanyMail;
+use App\Services\WHMCS\WHMCSEmailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +21,9 @@ class StationMailController extends Controller
 {
     /**
      * Send radio streaming email to station contacts
+     * Automatically uses WHMCS if client is linked, otherwise uses direct mail
      */
-    public function sendRadioMail(Request $request)
+    public function sendRadioMail(Request $request, WHMCSEmailService $whmcsEmailService)
     {
         try {
             \Log::info('📧 sendRadioMail called', ['request' => $request->all()]);
@@ -43,7 +46,30 @@ class StationMailController extends Controller
             }
             \Log::info('✅ Radio streaming found', ['streaming' => $radioStreaming->toArray()]);
 
-            // Obtener emails de la estación
+            // Check if client is linked to WHMCS FIRST - WHMCS doesn't need station emails
+            $whmcsClientId = null;
+            $useWHMCS = false;
+            
+            if ($station->client_id) {
+                $clientSync = WhmcsSyncMap::where('entity_type', 'client')
+                    ->where('laravel_id', $station->client_id)
+                    ->first();
+                
+                if ($clientSync) {
+                    $whmcsClientId = $clientSync->whmcs_id;
+                    $useWHMCS = true;
+                    \Log::info('✨ Client linked to WHMCS, using WHMCS method', [
+                        'whmcs_client_id' => $whmcsClientId
+                    ]);
+                }
+            }
+
+            // If client is linked to WHMCS, use WHMCS email method (doesn't need station emails)
+            if ($useWHMCS) {
+                return $this->sendViaWHMCS($station, $radioStreaming, [], $whmcsClientId, $whmcsEmailService, 'radio');
+            }
+
+            // Only check for station emails if NOT using WHMCS
             $emails = $this->getStationEmails($station);
             \Log::info('📧 Station emails detected', ['emails' => $emails]);
             
@@ -163,23 +189,56 @@ class StationMailController extends Controller
     /**
      * Send hosting station email to station contacts
      */
-    public function sendHostingMail(Request $request)
+    public function sendHostingMail(Request $request, WHMCSEmailService $whmcsEmailService)
     {
         try {
+            \Log::info('🏠 sendHostingMail called', ['request' => $request->all()]);
+            
             $stationId = $request->input('station_id');
             
             $station = Station::with(['client'])->find($stationId);
             if (!$station) {
+                \Log::error('❌ Station not found', ['station_id' => $stationId]);
                 return response()->json(['error' => 'Station not found'], 404);
             }
+            \Log::info('✅ Station found', ['station' => $station->toArray()]);
 
             $hostingStation = HostingStation::where('station_id', $stationId)->first();
             if (!$hostingStation) {
+                \Log::error('❌ No hosting station config', ['station_id' => $stationId]);
                 return response()->json(['error' => 'No hosting station configuration found'], 400);
             }
+            \Log::info('✅ Hosting station found', ['hosting' => $hostingStation->toArray()]);
 
+            // Check if client is linked to WHMCS FIRST - WHMCS doesn't need station emails
+            $whmcsClientId = null;
+            $useWHMCS = false;
+            
+            if ($station->client_id) {
+                $clientSync = WhmcsSyncMap::where('entity_type', 'client')
+                    ->where('laravel_id', $station->client_id)
+                    ->first();
+                
+                if ($clientSync) {
+                    $whmcsClientId = $clientSync->whmcs_id;
+                    $useWHMCS = true;
+                    \Log::info('✨ Client linked to WHMCS, using WHMCS method', [
+                        'whmcs_client_id' => $whmcsClientId
+                    ]);
+                }
+            }
+
+            // If client is linked to WHMCS, use WHMCS email method (doesn't need station emails)
+            if ($useWHMCS) {
+                return $this->sendViaWHMCS($station, $hostingStation, [], $whmcsClientId, $whmcsEmailService, 'hosting');
+            }
+
+            // Only check for station emails if NOT using WHMCS
             $emails = $this->getStationEmails($station);
+            \Log::info('🏠 Station emails detected', ['emails' => $emails]);
+            
             if (empty($emails)) {
+                \Log::error('❌ No emails configured', ['station_id' => $stationId]);
                 return response()->json(['error' => 'No emails configured for this station'], 400);
             }
 
@@ -197,7 +256,7 @@ class StationMailController extends Controller
                         'sent_at' => now()->toISOString()
                     ];
 
-                    // Log activity (simplified)
+                    // Log activity
                     try {
                         Activity::create([
                             'station_id' => $station->id,
@@ -224,6 +283,7 @@ class StationMailController extends Controller
 
             return response()->json([
                 'success' => true,
+                'method' => 'direct',
                 'station_name' => $station->name,
                 'results' => $results,
                 'sent_count' => $sentCount,
@@ -232,6 +292,11 @@ class StationMailController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('💥 Error in sendHostingMail', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to send emails: ' . $e->getMessage()
@@ -245,22 +310,126 @@ class StationMailController extends Controller
     private function getStationEmails($station): array
     {
         $emails = [];
+        $seenEmails = []; // Para evitar duplicados
         
         if ($station->email && filter_var($station->email, FILTER_VALIDATE_EMAIL)) {
-            $emails[] = [
-                'address' => $station->email,
-                'type' => 'primary'
-            ];
+            $normalizedEmail = strtolower(trim($station->email));
+            if (!in_array($normalizedEmail, $seenEmails)) {
+                $emails[] = [
+                    'address' => $station->email,
+                    'type' => 'primary'
+                ];
+                $seenEmails[] = $normalizedEmail;
+            }
         }
         
         if ($station->email2 && filter_var($station->email2, FILTER_VALIDATE_EMAIL)) {
-            $emails[] = [
-                'address' => $station->email2,
-                'type' => 'secondary'
-            ];
+            $normalizedEmail = strtolower(trim($station->email2));
+            if (!in_array($normalizedEmail, $seenEmails)) {
+                $emails[] = [
+                    'address' => $station->email2,
+                    'type' => 'secondary'
+                ];
+                $seenEmails[] = $normalizedEmail;
+            }
         }
         
+        \Log::info('📧 Station emails after deduplication', [
+            'total_emails' => count($emails),
+            'emails' => $emails
+        ]);
+        
         return $emails;
+    }
+
+    /**
+     * Send email via WHMCS-tracked method (sends with Laravel, logs in WHMCS)
+     */
+    private function sendViaWHMCS($station, $streaming, $emails, $whmcsClientId, $whmcsEmailService, $type = 'radio')
+    {
+        $stationData = $station->toArray();
+        $streamingData = $streaming->toArray();
+        $emailType = $type === 'radio' ? 'Radio' : ($type === 'tv' ? 'TV' : 'Hosting');
+        
+        try {
+            \Log::info("📤 Sending {$emailType} email via WHMCS template", [
+                'whmcs_client_id' => $whmcsClientId,
+                'station' => $station->name,
+                'type' => $type
+            ]);
+            
+            // IMPORTANTE: NO usamos el array de emails de la station
+            // WHMCS enviará automáticamente al email del cliente basado en clientId
+            // Solo necesitamos llamar UNA VEZ
+            if ($type === 'radio') {
+                $whmcsResult = $whmcsEmailService->sendRadioStreamingViaTemplate(
+                    $whmcsClientId,
+                    null,  // ← NULL: WHMCS decide a quién enviar basado en clientId
+                    $stationData,
+                    $streamingData
+                );
+            } else if ($type === 'tv') {
+                $whmcsResult = $whmcsEmailService->sendTvStreamingViaTemplate(
+                    $whmcsClientId,
+                    null,  // ← NULL: WHMCS decide a quién enviar basado en clientId
+                    $stationData,
+                    $streamingData
+                );
+            } else if ($type === 'hosting') {
+                $whmcsResult = $whmcsEmailService->sendHostingViaTemplate(
+                    $whmcsClientId,
+                    null,  // ← NULL: WHMCS decide a quién enviar basado en clientId
+                    $stationData,
+                    $streamingData
+                );
+            } else {
+                throw new \Exception('Unknown service type: ' . $type);
+            }
+
+            $templateName = $type === 'radio' ? 'rdomi_radio_streaming' : ($type === 'tv' ? 'rdomi_tv_streaming' : 'rdomi_hosting_web');
+            
+            \Log::info('✅ Email sent via WHMCS template successfully', [
+                'method' => 'whmcs_template',
+                'template' => $templateName,
+                'whmcs_client_id' => $whmcsClientId,
+                'whmcs_response' => $whmcsResult
+            ]);
+
+            // Log activity
+            try {
+                Activity::create([
+                    'station_id' => $station->id,
+                    'client_id' => $station->client_id,
+                    'action' => 'email_sent_whmcs',
+                    'description' => "{$emailType} streaming email sent via WHMCS to client {$whmcsClientId}"
+                ]);
+            } catch (\Exception $activityError) {
+                \Log::warning('⚠️ Failed to log activity', ['error' => $activityError->getMessage()]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'method' => 'whmcs_template',
+                'station_name' => $station->name,
+                'sent_count' => 1,
+                'whmcs_client_id' => $whmcsClientId,
+                'message' => 'Email sent via WHMCS to client email'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("❌ {$emailType} email via WHMCS failed", [
+                'whmcs_client_id' => $whmcsClientId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'method' => 'whmcs_template',
+                'error' => "Failed to send email via WHMCS: {$e->getMessage()}",
+                'whmcs_client_id' => $whmcsClientId
+            ], 500);
+        }
     }
 
     /**
@@ -439,8 +608,9 @@ class StationMailController extends Controller
 
     /**
      * Send TV streaming email to station contacts
+     * Automatically uses WHMCS if client is linked, otherwise uses direct mail
      */
-    public function sendTvMail(Request $request)
+    public function sendTvMail(Request $request, WHMCSEmailService $whmcsEmailService)
     {
         try {
             \Log::info('📺 sendTvMail called', ['request' => $request->all()]);
@@ -463,7 +633,30 @@ class StationMailController extends Controller
             }
             \Log::info('✅ Video streaming found', ['streaming' => $videoStreaming->toArray()]);
 
-            // Obtener emails de la estación
+            // Check if client is linked to WHMCS FIRST - WHMCS doesn't need station emails
+            $whmcsClientId = null;
+            $useWHMCS = false;
+            
+            if ($station->client_id) {
+                $clientSync = WhmcsSyncMap::where('entity_type', 'client')
+                    ->where('laravel_id', $station->client_id)
+                    ->first();
+                
+                if ($clientSync) {
+                    $whmcsClientId = $clientSync->whmcs_id;
+                    $useWHMCS = true;
+                    \Log::info('✨ Client linked to WHMCS, using WHMCS method', [
+                        'whmcs_client_id' => $whmcsClientId
+                    ]);
+                }
+            }
+
+            // If client is linked to WHMCS, use WHMCS email method (doesn't need station emails)
+            if ($useWHMCS) {
+                return $this->sendViaWHMCS($station, $videoStreaming, [], $whmcsClientId, $whmcsEmailService, 'tv');
+            }
+
+            // Only check for station emails if NOT using WHMCS
             $emails = $this->getStationEmails($station);
             \Log::info('📺 Station emails detected', ['emails' => $emails]);
             
@@ -559,6 +752,137 @@ class StationMailController extends Controller
                 'debug' => [
                     'line' => $e->getLine(),
                     'file' => basename($e->getFile())
+                ]
+            ], 500);
+        }
+    }
+
+    /**
+     * Send radio streaming email via WHMCS (alias for sendRadioMail)
+     * Uses the same auto-detection logic
+     */
+    public function sendRadioMailViaWHMCS(Request $request, WHMCSEmailService $whmcsEmailService)
+    {
+        \Log::info('📧 sendRadioMailViaWHMCS called - delegating to sendRadioMail');
+        return $this->sendRadioMail($request, $whmcsEmailService);
+    }
+
+
+    /**
+     * Send TV streaming email via WHMCS (alias for sendTvMail)
+     * Uses the same auto-detection logic
+     */
+    public function sendTvMailViaWHMCS(Request $request, WHMCSEmailService $whmcsEmailService)
+    {
+        \Log::info('📺 sendTvMailViaWHMCS called - delegating to sendTvMail');
+        return $this->sendTvMail($request, $whmcsEmailService);
+    }
+
+    /**
+     * Test endpoint: Send email via WHMCS template
+     * Tests the new template-based approach
+     */
+    public function testSendHtmlViaWHMCS(Request $request, WHMCSEmailService $whmcsEmailService)
+    {
+        try {
+            \Log::info('🧪 testSendHtmlViaWHMCS called', ['request' => $request->all()]);
+
+            $stationId = $request->input('station_id');
+            $recipientEmail = $request->input('email');
+
+            if (!$recipientEmail) {
+                return response()->json(['error' => 'Email address is required'], 400);
+            }
+
+            // Get station data
+            $station = Station::with(['client'])->find($stationId);
+            if (!$station) {
+                return response()->json(['error' => 'Station not found'], 404);
+            }
+
+            // Get client ID for WHMCS
+            $whmcsClientId = null;
+            if ($station->client_id) {
+                $clientSync = WhmcsSyncMap::where('entity_type', 'client')
+                    ->where('laravel_id', $station->client_id)
+                    ->first();
+
+                if ($clientSync) {
+                    $whmcsClientId = $clientSync->whmcs_id;
+                } else {
+                    return response()->json([
+                        'error' => 'Station client is not linked to WHMCS',
+                        'station_id' => $stationId,
+                        'client_id' => $station->client_id
+                    ], 400);
+                }
+            } else {
+                return response()->json([
+                    'error' => 'Station has no client assigned',
+                    'station_id' => $stationId
+                ], 400);
+            }
+
+            // Get radio streaming config (for testing)
+            $radioStreaming = RadioStreaming::where('station_id', $stationId)->first();
+            if (!$radioStreaming) {
+                return response()->json(['error' => 'No radio streaming configuration found'], 400);
+            }
+
+            // Prepare station and streaming data
+            $stationData = $station->toArray();
+            $streamingData = $radioStreaming->toArray();
+
+            // Send email via WHMCS template
+            $result = $whmcsEmailService->sendRadioStreamingViaTemplate(
+                $whmcsClientId,
+                $recipientEmail,
+                $stationData,
+                $streamingData
+            );
+
+            \Log::info('✅ Email sent via WHMCS template (test endpoint)', [
+                'to' => $recipientEmail,
+                'station' => $station->name,
+                'result' => $result
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email sent successfully via WHMCS template',
+                'method' => 'whmcs_template_test',
+                'recipient' => $recipientEmail,
+                'template' => 'rdomi_radio_streaming',
+                'whmcs_client_id' => $whmcsClientId,
+                'whmcs_response' => $result['whmcs_response'] ?? null,
+                'station_name' => $station->name,
+                'variables_sent' => [
+                    'station_name',
+                    'username',
+                    'password',
+                    'server_host',
+                    'server_port',
+                    'stream_password',
+                    'panel_url',
+                    'stream_url',
+                    'embed_code'
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('💥 Error in testSendHtmlViaWHMCS', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to send email via WHMCS template: ' . $e->getMessage(),
+                'debug' => [
+                    'line' => $e->getLine(),
+                    'file' => basename($e->getFile()),
+                    'message' => $e->getMessage()
                 ]
             ], 500);
         }
