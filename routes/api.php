@@ -28,6 +28,11 @@ use App\Http\Controllers\MailLabelController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\RdomiStationController;
 use App\Http\Controllers\RdomiServiceStatsController;
+use App\Http\Controllers\CountryController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\StationMailController;
+use App\Http\Controllers\WHMCSClientController;
+use App\Http\Controllers\WHMCSSyncController;
 
 
 
@@ -161,6 +166,24 @@ Route::post('rccontrol/client/add', [RcControlClientController::class, 'add']);
 
 Route::post('rccontrol/ticket/store', [TicketController::class, 'store']);
 Route::post('rccontrol/ticket/index', [TicketController::class, 'index']);
+Route::delete('rccontrol/ticket/{id}', [TicketController::class, 'destroy']);
+Route::post('rccontrol/ticket/bulk-delete', [TicketController::class, 'bulkDestroy']);
+Route::post('rccontrol/ticket/bulk-update-status', [TicketController::class, 'bulkUpdateStatus']);
+Route::post('rccontrol/ticket/{id}/restore', [TicketController::class, 'restore']);
+Route::post('rccontrol/ticket/bulk-permanent-delete', [TicketController::class, 'bulkPermanentDelete']);
+Route::post('rccontrol/ticket/migrate-legacy-deleted', [TicketController::class, 'migrateLegacyDeleted']);
+Route::post('rccontrol/ticket/delete-legacy-tickets', [TicketController::class, 'deleteLegacyTickets']);
+Route::post('rccontrol/activities/delete-legacy-activities', [ActivityController::class, 'deleteLegacyActivities']);
+Route::post('rccontrol/activities/delete-specific-legacy', [ActivityController::class, 'deleteSpecificLegacyActivities']);
+Route::post('rccontrol/activities/delete-activity-701', [ActivityController::class, 'deleteActivity701']);
+Route::post('rccontrol/activities/delete-individual-activity', [ActivityController::class, 'deleteIndividualActivity']);
+Route::post('rccontrol/activities/force-delete-trash-activities', [ActivityController::class, 'forceDeleteTrashActivities']);
+Route::get('rccontrol/activities/analyze-trash-activities', [ActivityController::class, 'analyzeTrashActivities']);
+Route::get('rccontrol/activities/preview-ghost-activities', [ActivityController::class, 'previewGhostActivities']);
+Route::post('rccontrol/activities/delete-ghost-activities', [ActivityController::class, 'deleteGhostActivities']);
+Route::post('rccontrol/activities/delete-all-report-activities', [ActivityController::class, 'deleteAllReportActivities']);
+Route::get('rccontrol/activities/test-legacy-activities', [ActivityController::class, 'testLegacyActivities']);
+Route::get('rccontrol/activities/find-specific-legacy', [ActivityController::class, 'findSpecificLegacyActivities']);
 
 
 
@@ -257,6 +280,80 @@ Route::get('rdomi/sts/analytics/dashboard/{service_id}', [RdomiServiceStatsContr
 
 // Admin Routes - INCREMENTO MANUAL
 Route::post('rdomi/sts/admin/manual-increment', [RdomiServiceStatsController::class, 'manualIncrement']);
+
+// Location Routes - Countries and Cities
+Route::post('location/country/all', [CountryController::class, 'index']);
+Route::post('location/country/show/{id}', [CountryController::class, 'show']);
+Route::post('location/cities/all', [CityController::class, 'index']);
+Route::post('location/cities/by/country', [CityController::class, 'getByCountry']);
+Route::post('location/city/show/{id}', [CityController::class, 'show']);
+
+// Station Email Routes - Send emails using SendGrid
+Route::post('station/send-radio-mail', [StationMailController::class, 'sendRadioMail']);
+Route::post('station/send-hosting-mail', [StationMailController::class, 'sendHostingMail']);
+Route::post('station/send-tv-mail', [StationMailController::class, 'sendTvMail']);
+Route::post('station/preview-radio-mail', [StationMailController::class, 'previewRadioMail']);
+
+// Email Testing Routes
+Route::get('mail/test-config', [StationMailController::class, 'testEmailConfig']);
+Route::post('mail/send-test', [StationMailController::class, 'sendTestEmail']);
+Route::post('station/debug', [StationMailController::class, 'debugStation']);
+Route::get('mail/logs', [StationMailController::class, 'getEmailLogs']);
+
+
+// ============================================
+// WHMCS INTEGRATION ROUTES
+// ============================================
+// Manual, on-demand integration with WHMCS
+// No automatic syncing - all operations require explicit action
+
+// WHMCS Clients Management
+Route::prefix('whmcs/clients')->group(function () {
+    // Push Laravel client to WHMCS (create or update)
+    Route::post('push/{client_id}', [WHMCSClientController::class, 'pushToWHMCS']);
+    
+    // Update existing client in WHMCS
+    Route::post('update/{client_id}', [WHMCSClientController::class, 'updateInWHMCS']);
+    
+    // Pull client from WHMCS to Laravel
+    Route::post('pull/{whmcs_id}', [WHMCSClientController::class, 'pullFromWHMCS']);
+    
+    // List clients from WHMCS
+    Route::post('list', [WHMCSClientController::class, 'listWHMCSClients']);
+    
+    // Get specific client from WHMCS
+    Route::post('get/{whmcs_id}', [WHMCSClientController::class, 'getWHMCSClient']);
+    
+    // Check if Laravel client is synced with WHMCS
+    Route::post('check/{client_id}', [WHMCSClientController::class, 'checkSync']);
+    
+    // Delete client from WHMCS (requires confirmation)
+    Route::post('delete/{whmcs_id}', [WHMCSClientController::class, 'deleteFromWHMCS']);
+});
+
+// WHMCS Sync Management & Utilities
+Route::prefix('whmcs/sync')->group(function () {
+    // Test WHMCS API connection
+    Route::get('test', [WHMCSSyncController::class, 'testConnection']);
+    
+    // Get sync logs (history of all operations)
+    Route::post('logs', [WHMCSSyncController::class, 'getSyncLogs']);
+    
+    // Get sync mapping (what's connected to WHMCS)
+    Route::post('map', [WHMCSSyncController::class, 'getSyncMap']);
+    
+    // Get sync statistics
+    Route::get('stats', [WHMCSSyncController::class, 'getSyncStats']);
+    
+    // Unlink entity from WHMCS (break sync relationship)
+    Route::post('unlink', [WHMCSSyncController::class, 'unlinkEntity']);
+    
+    // Get WHMCS configuration
+    Route::get('config', [WHMCSSyncController::class, 'getConfig']);
+    
+    // Clear WHMCS cache
+    Route::post('clear-cache', [WHMCSSyncController::class, 'clearCache']);
+});
 
 
 // Route::post('rccontrol/mails/index', 'MailController@index');

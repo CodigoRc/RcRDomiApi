@@ -13,11 +13,17 @@ class RdomiStationController extends Controller
         $limit = request()->query('limit');
         $featured = request()->query('featured');
 
-        $query = Station::where('status', 1)
-                        ->orderBy('order', 'asc');
+        $query = Station::leftJoin('service_stats', function($join) {
+                        $join->on('station.id', '=', 'service_stats.service_id')
+                             ->where('service_stats.type', '=', 'view');
+                    })
+                    ->where('station.status', 1)
+                    ->orderBy('service_stats.count', 'desc')
+                    ->orderBy('station.order', 'asc')
+                    ->select('station.*');
 
         if (!is_null($featured)) {
-            $query->where('featured', 1);
+            $query->where('station.featured', 1);
         }
 
         if ($limit) {
@@ -35,12 +41,18 @@ class RdomiStationController extends Controller
         $limit = request()->query('limit');
         $featured = request()->query('featured');
 
-        $query = Station::where('station_type_id', 0)
-                        ->where('status', 1)
-                        ->orderBy('order', 'asc');
+        $query = Station::leftJoin('service_stats', function($join) {
+                        $join->on('station.id', '=', 'service_stats.service_id')
+                             ->where('service_stats.type', '=', 'view');
+                    })
+                    ->where('station.station_type_id', 0)
+                    ->where('station.status', 1)
+                    ->orderBy('service_stats.count', 'desc')
+                    ->orderBy('station.order', 'asc')
+                    ->select('station.*');
 
         if (!is_null($featured)) {
-            $query->where('featured', 1);
+            $query->where('station.featured', 1);
         }
 
         if ($limit) {
@@ -58,12 +70,18 @@ class RdomiStationController extends Controller
         $limit = request()->query('limit');
         $featured = request()->query('featured');
 
-        $query = Station::where('station_type_id', 1)
-                        ->where('status', 1)
-                        ->orderBy('order', 'asc');
+        $query = Station::leftJoin('service_stats', function($join) {
+                        $join->on('station.id', '=', 'service_stats.service_id')
+                             ->where('service_stats.type', '=', 'view');
+                    })
+                    ->where('station.station_type_id', 1)
+                    ->where('station.status', 1)
+                    ->orderBy('service_stats.count', 'desc')
+                    ->orderBy('station.order', 'asc')
+                    ->select('station.*');
 
         if (!is_null($featured)) {
-            $query->where('featured', 1);
+            $query->where('station.featured', 1);
         }
 
         if ($limit) {
@@ -87,7 +105,16 @@ class RdomiStationController extends Controller
 
     public function RdomiByClient($client_id)
     {
-        $stations = Station::where('status', 1)->where('client_id', $client_id)->orderBy('order', 'asc')->get();
+        $stations = Station::leftJoin('service_stats', function($join) {
+                        $join->on('station.id', '=', 'service_stats.service_id')
+                             ->where('service_stats.type', '=', 'view');
+                    })
+                    ->where('station.status', 1)
+                    ->where('station.client_id', $client_id)
+                    ->orderBy('service_stats.count', 'desc')
+                    ->orderBy('station.order', 'asc')
+                    ->select('station.*')
+                    ->get();
         $data = RdomiStationResource::collection($stations);
         return response()->json(["data" => $data, "code" => 200]);
     }
