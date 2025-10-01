@@ -58,7 +58,7 @@ WHMCS_LOG_ENABLED=true
 
 ```bash
 # Vía terminal (curl)
-curl -X GET http://tu-laravel-api.com/api/whmcs/sync/test
+curl -X GET http://rdomint.com/api/whmcs/sync/test
 
 # Vía Postman/Insomnia
 GET /api/whmcs/sync/test
@@ -70,9 +70,12 @@ Respuesta esperada:
   "success": true,
   "message": "Connection successful",
   "whmcs_version": "8.x",
-  "response_time_ms": 123
+  "response_time_ms": 123,
+  "currencies_count": 2
 }
 ```
+
+**Nota sobre whmcs_version**: Si WHMCS no devuelve la versión en la respuesta de la API (común en configuraciones personalizadas), este campo mostrará "Unknown". Esto es normal y no indica un problema de conexión. Si `response_time_ms` tiene un valor numérico, la conexión es exitosa.
 
 ---
 

@@ -271,6 +271,7 @@ class WHMCSClientService
         return [
             'success' => true,
             'client' => $response['client'] ?? null,
+            'stats' => $response['stats'] ?? null,
         ];
     }
 
@@ -387,6 +388,197 @@ class WHMCSClientService
         // TODO: Implement country lookup from your database
         // For now, return default
         return 'US';
+    }
+
+    /**
+     * Create SSO token for client (allows client to access WHMCS without login)
+     */
+    public function createSsoToken(int $whmcsId, ?string $destination = null): array
+    {
+        try {
+            $params = [
+                'client_id' => $whmcsId,
+            ];
+
+            // Add destination if provided
+            if (!empty($destination)) {
+                $params['destination'] = $destination;
+            }
+
+            \Log::info('Creating SSO token for WHMCS client', [
+                'whmcs_id' => $whmcsId,
+                'destination' => $destination,
+                'params' => $params
+            ]);
+
+            $response = $this->api->request('CreateSsoToken', $params, false);
+
+            \Log::info('SSO token created successfully', [
+                'whmcs_id' => $whmcsId,
+                'has_redirect_url' => isset($response['redirect_url']),
+                'has_token' => isset($response['access_token'])
+            ]);
+
+            return [
+                'success' => true,
+                'redirect_url' => $response['redirect_url'] ?? null,
+                'token' => $response['access_token'] ?? null,
+                'whmcs_response' => $response,
+            ];
+
+        } catch (WHMCSException $e) {
+            \Log::error('Error creating SSO token', [
+                'whmcs_id' => $whmcsId,
+                'error' => $e->getMessage(),
+                'response' => $e->getWhmcsResponse()
+            ]);
+            throw new WHMCSException('Error creating SSO token: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error creating SSO token', [
+                'whmcs_id' => $whmcsId,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get client products from WHMCS
+     */
+    public function getClientProducts(int $whmcsId): array
+    {
+        $response = $this->api->request('GetClientsProducts', [
+            'clientid' => $whmcsId,
+            'stats' => true,
+        ], true);
+
+        $products = $response['products']['product'] ?? [];
+        
+        // Ensure it's an array (single product returns object, not array)
+        if (!empty($products) && !isset($products[0])) {
+            $products = [$products];
+        }
+
+        // Process custom fields and normalize data
+        foreach ($products as &$product) {
+            // Normalize ID field
+            if (!isset($product['id']) && isset($product['serviceid'])) {
+                $product['id'] = $product['serviceid'];
+            }
+            
+            // Normalize name field
+            if (!isset($product['name'])) {
+                if (isset($product['productname'])) {
+                    $product['name'] = $product['productname'];
+                } elseif (isset($product['product'])) {
+                    $product['name'] = $product['product'];
+                } elseif (isset($product['groupname'])) {
+                    $product['name'] = $product['groupname'];
+                }
+            }
+            
+            // Normalize amount field
+            if (!isset($product['amount'])) {
+                if (isset($product['recurringamount'])) {
+                    $product['amount'] = $product['recurringamount'];
+                } elseif (isset($product['firstpaymentamount'])) {
+                    $product['amount'] = $product['firstpaymentamount'];
+                }
+            }
+            
+            // WHMCS custom fields come as 'customfields' array
+            // Convert to easier format
+            if (isset($product['customfields']['customfield'])) {
+                $customFieldsArray = $product['customfields']['customfield'];
+                
+                // Ensure it's an array
+                if (!isset($customFieldsArray[0])) {
+                    $customFieldsArray = [$customFieldsArray];
+                }
+                
+                // Convert to key-value format
+                $customFieldsFormatted = [];
+                foreach ($customFieldsArray as $field) {
+                    $fieldName = strtolower($field['name'] ?? '');
+                    $customFieldsFormatted[$fieldName] = $field['value'] ?? '';
+                }
+                
+                $product['customfields'] = $customFieldsFormatted;
+            }
+        }
+
+        return [
+            'success' => true,
+            'products' => $products,
+            'total' => count($products),
+        ];
+    }
+
+    /**
+     * Get client invoices from WHMCS
+     */
+    public function getClientInvoices(int $whmcsId, array $filters = []): array
+    {
+        $params = array_merge([
+            'userid' => $whmcsId,
+            'limitstart' => $filters['offset'] ?? 0,
+            'limitnum' => $filters['limit'] ?? 25,
+        ], $filters);
+
+        $response = $this->api->request('GetInvoices', $params, true);
+
+        $invoices = $response['invoices']['invoice'] ?? [];
+        
+        // Ensure it's an array
+        if (!empty($invoices) && !isset($invoices[0])) {
+            $invoices = [$invoices];
+        }
+
+        return [
+            'success' => true,
+            'invoices' => $invoices,
+            'total' => $response['totalresults'] ?? count($invoices),
+        ];
+    }
+
+    /**
+     * Get client domains from WHMCS
+     */
+    public function getClientDomains(int $whmcsId, array $filters = []): array
+    {
+        $params = array_merge([
+            'clientid' => $whmcsId,
+            'limitstart' => $filters['offset'] ?? 0,
+            'limitnum' => $filters['limit'] ?? 25,
+        ], $filters);
+
+        $response = $this->api->request('GetClientsDomains', $params, true);
+
+        $domains = $response['domains']['domain'] ?? [];
+        
+        // Ensure it's an array
+        if (!empty($domains) && !isset($domains[0])) {
+            $domains = [$domains];
+        }
+
+        // Normalize domain data
+        foreach ($domains as &$domain) {
+            // Normalize ID field
+            if (!isset($domain['id']) && isset($domain['domainid'])) {
+                $domain['id'] = $domain['domainid'];
+            }
+            
+            // Normalize domain name field
+            if (!isset($domain['domain']) && isset($domain['domainname'])) {
+                $domain['domain'] = $domain['domainname'];
+            }
+        }
+
+        return [
+            'success' => true,
+            'domains' => $domains,
+            'total' => $response['totalresults'] ?? count($domains),
+        ];
     }
 
     /**

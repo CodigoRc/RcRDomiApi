@@ -33,6 +33,7 @@ use App\Http\Controllers\CityController;
 use App\Http\Controllers\StationMailController;
 use App\Http\Controllers\WHMCSClientController;
 use App\Http\Controllers\WHMCSSyncController;
+use App\Http\Controllers\WHMCSStationController;
 
 
 
@@ -329,6 +330,49 @@ Route::prefix('whmcs/clients')->group(function () {
     
     // Delete client from WHMCS (requires confirmation)
     Route::post('delete/{whmcs_id}', [WHMCSClientController::class, 'deleteFromWHMCS']);
+});
+
+// Manual Client Linking (Read-Only WHMCS Integration)
+Route::prefix('clients')->group(function () {
+    // Link Laravel client to WHMCS client manually
+    Route::post('{client_id}/link-whmcs', [WHMCSClientController::class, 'linkToWHMCS']);
+    
+    // Get WHMCS info for linked client (read-only)
+    Route::get('{client_id}/whmcs-info', [WHMCSClientController::class, 'getWHMCSInfo']);
+    
+    // Get WHMCS products for linked client
+    Route::get('{client_id}/whmcs-products', [WHMCSClientController::class, 'getWHMCSProducts']);
+    
+    // Get WHMCS invoices for linked client
+    Route::get('{client_id}/whmcs-invoices', [WHMCSClientController::class, 'getWHMCSInvoices']);
+    
+    // Get WHMCS domains for linked client
+    Route::get('{client_id}/whmcs-domains', [WHMCSClientController::class, 'getWHMCSDomains']);
+    
+    // Generate SSO token for client (auto-login to WHMCS)
+    Route::post('{client_id}/whmcs-sso', [WHMCSClientController::class, 'generateSsoToken']);
+    
+    // Unlink client from WHMCS (doesn't delete anything)
+    Route::delete('{client_id}/unlink-whmcs', [WHMCSClientController::class, 'unlinkFromWHMCS']);
+});
+
+// Station WHMCS Integration (Link stations to products/domains)
+Route::prefix('stations')->group(function () {
+    // Get available products/domains for station's client
+    Route::get('{station_id}/whmcs-available-products', [WHMCSStationController::class, 'getAvailableProducts']);
+    Route::get('{station_id}/whmcs-available-domains', [WHMCSStationController::class, 'getAvailableDomains']);
+    
+    // Link station to product/domain
+    Route::post('{station_id}/link-whmcs-product', [WHMCSStationController::class, 'linkToProduct']);
+    Route::post('{station_id}/link-whmcs-domain', [WHMCSStationController::class, 'linkToDomain']);
+    
+    // Get linked product/domain info
+    Route::get('{station_id}/whmcs-product', [WHMCSStationController::class, 'getProductInfo']);
+    Route::get('{station_id}/whmcs-domain', [WHMCSStationController::class, 'getDomainInfo']);
+    
+    // Unlink station from product/domain
+    Route::delete('{station_id}/unlink-whmcs-product', [WHMCSStationController::class, 'unlinkFromProduct']);
+    Route::delete('{station_id}/unlink-whmcs-domain', [WHMCSStationController::class, 'unlinkFromDomain']);
 });
 
 // WHMCS Sync Management & Utilities

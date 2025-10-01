@@ -56,6 +56,102 @@ Body: { "confirm": true }
 
 ---
 
+## 🔗 VINCULACIÓN MANUAL (Read-Only)
+
+**Estos endpoints permiten vincular clientes de Laravel con WHMCS sin sincronizar datos.**  
+Ideal para ver información de WHMCS sin modificar nada.
+
+### Vincular Cliente a WHMCS
+```bash
+POST /clients/{client_id}/link-whmcs
+Body: { "whmcs_id": 123 }
+
+# Ejemplo
+curl -X POST http://rdomint.com/api/clients/45/link-whmcs \
+  -H "Content-Type: application/json" \
+  -d '{"whmcs_id": 123}'
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Client linked to WHMCS successfully",
+  "sync_map": {
+    "id": 1,
+    "entity_type": "client",
+    "laravel_id": 45,
+    "whmcs_id": 123,
+    "sync_status": "synced",
+    "linked_at": "2025-10-01 10:30:00"
+  },
+  "whmcs_client": {
+    "id": 123,
+    "name": "John Doe",
+    "email": "john@example.com"
+  }
+}
+```
+
+### Ver Info WHMCS del Cliente
+```bash
+GET /clients/{client_id}/whmcs-info
+
+# Ejemplo
+curl -X GET http://rdomint.com/api/clients/45/whmcs-info
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "linked": true,
+  "whmcs_id": 123,
+  "laravel_id": 45,
+  "linked_at": "2025-10-01 10:30:00",
+  "whmcs_data": {
+    "client": {
+      "id": 123,
+      "firstname": "John",
+      "lastname": "Doe",
+      "email": "john@example.com",
+      "status": "Active",
+      "credit": "150.00"
+    },
+    "stats": {
+      "productsnumactive": 3,
+      "numdueinvoices": 2,
+      "numtickets": 1
+    }
+  }
+}
+```
+
+### Desvincular Cliente de WHMCS
+```bash
+DELETE /clients/{client_id}/unlink-whmcs
+
+# Ejemplo
+curl -X DELETE http://rdomint.com/api/clients/45/unlink-whmcs
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "message": "Client unlinked from WHMCS successfully",
+  "note": "No data was deleted from either system"
+}
+```
+
+**⚠️ Importante:**
+- ✅ **No sincroniza datos**: Solo guarda la relación
+- ✅ **No modifica WHMCS**: Los datos permanecen intactos
+- ✅ **Read-only**: Solo lectura de información
+- ✅ **Seguro**: Desvincular no borra nada
+
+---
+
 ## ⚙️ GESTIÓN SYNC
 
 ### Test Conexión

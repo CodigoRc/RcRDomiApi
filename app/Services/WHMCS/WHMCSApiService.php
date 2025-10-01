@@ -216,13 +216,16 @@ class WHMCSApiService
     public function testConnection(): array
     {
         try {
+            $startTime = microtime(true);
             $response = $this->request('GetCurrencies', [], false);
+            $executionTime = (int)((microtime(true) - $startTime) * 1000);
             
             return [
                 'success' => true,
                 'message' => 'Connection successful',
-                'whmcs_version' => $response['whmcs_version'] ?? 'Unknown',
-                'response_time_ms' => $response['execution_time_ms'] ?? null,
+                'whmcs_version' => $response['version'] ?? ($response['whmcsVersion'] ?? 'Unknown'),
+                'response_time_ms' => $executionTime,
+                'currencies_count' => isset($response['currencies']) ? count($response['currencies']['currency'] ?? []) : 0,
             ];
         } catch (WHMCSException $e) {
             return [

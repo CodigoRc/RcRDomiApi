@@ -121,7 +121,7 @@ class WhmcsSyncLog extends Model
         string $operation,
         ?int $laravelId = null,
         ?int $whmcsId = null,
-        ?array $requestData = null,
+        ?int $userId = null,
         ?array $responseData = null,
         ?int $executionTime = null
     ): self {
@@ -131,7 +131,7 @@ class WhmcsSyncLog extends Model
             'laravel_id' => $laravelId,
             'whmcs_id' => $whmcsId,
             'status' => 'success',
-            'request_data' => $requestData,
+            'user_id' => $userId,
             'response_data' => $responseData,
             'execution_time_ms' => $executionTime,
             'whmcs_result' => $responseData['result'] ?? null,
